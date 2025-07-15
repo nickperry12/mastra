@@ -675,7 +675,7 @@ export function agentsRouter(bodyLimitOptions: BodyLimitOptions) {
   return router;
 }
 
-export function agentsRouterDev(bodyLimitOptions: any) {
+export function agentsRouterDev(bodyLimitOptions: BodyLimitOptions) {
   const router = new Hono();
 
   router.post(
