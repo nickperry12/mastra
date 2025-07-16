@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { describeRoute } from 'hono-openapi';
 import { bodyLimit } from 'hono/body-limit';
+import { describeRoute } from 'hono-openapi';
 import type { BodyLimitOptions } from '../../types';
 import {
   generateHandler,

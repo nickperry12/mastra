@@ -19,17 +19,17 @@ import { authenticationMiddleware, authorizationMiddleware } from './handlers/au
 import { handleClientsRefresh, handleTriggerClientsRefresh } from './handlers/client';
 import { errorHandler } from './handlers/error';
 import { rootHandler } from './handlers/root';
-import type { ServerBundleOptions } from './types';
-import { html } from './welcome.js';
 import { agentsRouterDev, agentsRouter } from './handlers/routes/agents';
-import { vNextNetworksRouter, networksRouter } from './handlers/routes/networks';
+import { logsRouter } from './handlers/routes/logs';
 import { mcpRouter } from './handlers/routes/mcp';
 import { memoryRoutes } from './handlers/routes/memory';
+import { vNextNetworksRouter, networksRouter } from './handlers/routes/networks';
 import { telemetryRouter } from './handlers/routes/telemetry';
-import { workflowsRouter } from './handlers/routes/workflows';
-import { logsRouter } from './handlers/routes/logs';
 import { toolsRouter } from './handlers/routes/tools';
 import { vectorRouter } from './handlers/routes/vector';
+import { workflowsRouter } from './handlers/routes/workflows';
+import type { ServerBundleOptions } from './types';
+import { html } from './welcome.js';
 
 type Bindings = {};
 
