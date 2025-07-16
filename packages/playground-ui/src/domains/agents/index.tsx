@@ -4,3 +4,5 @@ export * from './components/agent-traces';
 export * from './context';
 export * from './components/agent-settings';
 export * from './components/agent-table/agent-table';
+export * from './components/runtime-context';
+export * from './components/provider-map-icon';

@@ -1,4 +1,4 @@
-import { Routes, Route, BrowserRouter, Outlet, Link } from 'react-router';
+import { Routes, Route, BrowserRouter, Outlet, useNavigate } from 'react-router';
 
 import { Layout } from '@/components/layout';
 
@@ -33,6 +33,20 @@ import { WorkflowGraphLayout } from './pages/workflows/layouts/workflow-graph-la
 import { LinkComponentProvider, MastraClientProvider } from '@mastra/playground-ui';
 import VNextNetwork from './pages/networks/network/v-next';
 import { NavigateTo } from './lib/react-router';
+import { Link } from './lib/framework';
+
+const LinkComponentWrapper = ({ children }: { children: React.ReactNode }) => {
+  const navigate = useNavigate();
+  const frameworkNavigate = (path: string) => {
+    navigate(path);
+  };
+
+  return (
+    <LinkComponentProvider Link={Link} navigate={frameworkNavigate}>
+      {children}
+    </LinkComponentProvider>
+  );
+};
 
 function App() {
   const [queryClient] = useState(() => new QueryClient());
@@ -41,8 +55,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <PostHogProvider>
         <MastraClientProvider>
-          <LinkComponentProvider Link={Link}>
-            <BrowserRouter>
+          <BrowserRouter>
+            <LinkComponentWrapper>
               <Routes>
                 <Route
                   element={
@@ -158,8 +172,8 @@ function App() {
                   <Route path="/runtime-context" element={<RuntimeContext />} />
                 </Route>
               </Routes>
-            </BrowserRouter>
-          </LinkComponentProvider>
+            </LinkComponentWrapper>
+          </BrowserRouter>
         </MastraClientProvider>
       </PostHogProvider>
     </QueryClientProvider>
