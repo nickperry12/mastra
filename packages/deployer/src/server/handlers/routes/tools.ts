@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { executeToolHandler, getToolByIdHandler, getToolsHandler } from '../tools';
-import { describeRoute } from 'hono-openapi';
 import { bodyLimit } from 'hono/body-limit';
+import { describeRoute } from 'hono-openapi';
 import type { BodyLimitOptions } from '../../types';
+import { executeToolHandler, getToolByIdHandler, getToolsHandler } from '../tools';
 
 export function toolsRouter(bodyLimitOptions: BodyLimitOptions, tools: Record<string, any>) {
   const router = new Hono();

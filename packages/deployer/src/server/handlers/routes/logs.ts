@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { getLogsByRunIdHandler, getLogsHandler, getLogTransports } from '../logs';
 import { describeRoute } from 'hono-openapi';
+import { getLogsByRunIdHandler, getLogsHandler, getLogTransports } from '../logs';
 
 export function logsRouter() {
   const router = new Hono();

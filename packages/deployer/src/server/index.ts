@@ -10,104 +10,26 @@ import { RuntimeContext } from '@mastra/core/runtime-context';
 import { Tool } from '@mastra/core/tools';
 import type { Context, MiddlewareHandler } from 'hono';
 import { Hono } from 'hono';
-import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { timeout } from 'hono/timeout';
 import { describeRoute, openAPISpecs } from 'hono-openapi';
 import { getAgentCardByIdHandler, getAgentExecutionHandler } from './handlers/a2a';
-import {
-  generateHandler,
-  getAgentByIdHandler,
-  getAgentsHandler,
-  getEvalsByAgentIdHandler,
-  getLiveEvalsByAgentIdHandler,
-  setAgentInstructionsHandler,
-  streamGenerateHandler,
-} from './handlers/agents';
 import { authenticationMiddleware, authorizationMiddleware } from './handlers/auth';
 import { handleClientsRefresh, handleTriggerClientsRefresh } from './handlers/client';
 import { errorHandler } from './handlers/error';
-import {
-  createLegacyWorkflowRunHandler,
-  getLegacyWorkflowByIdHandler,
-  getLegacyWorkflowRunsHandler,
-  getLegacyWorkflowsHandler,
-  resumeAsyncLegacyWorkflowHandler,
-  resumeLegacyWorkflowHandler,
-  startAsyncLegacyWorkflowHandler,
-  startLegacyWorkflowRunHandler,
-  watchLegacyWorkflowHandler,
-} from './handlers/legacyWorkflows.js';
-import { getLogsByRunIdHandler, getLogsHandler, getLogTransports } from './handlers/logs';
-import {
-  executeMcpServerToolHandler,
-  getMcpRegistryServerDetailHandler,
-  getMcpServerMessageHandler,
-  getMcpServerSseHandler,
-  getMcpServerToolDetailHandler,
-  listMcpRegistryServersHandler,
-  listMcpServerToolsHandler,
-} from './handlers/mcp';
-import {
-  createThreadHandler,
-  deleteThreadHandler,
-  getMemoryStatusHandler,
-  getMessagesHandler,
-  getThreadByIdHandler,
-  getThreadsHandler,
-  getWorkingMemoryHandler,
-  saveMessagesHandler,
-  updateThreadHandler,
-  updateWorkingMemoryHandler,
-} from './handlers/memory';
-import {
-  generateHandler as generateNetworkHandler,
-  getNetworkByIdHandler,
-  getNetworksHandler,
-  streamGenerateHandler as streamGenerateNetworkHandler,
-} from './handlers/network';
-import { generateSystemPromptHandler } from './handlers/prompt';
 import { rootHandler } from './handlers/root';
-import { getTelemetryHandler, storeTelemetryHandler } from './handlers/telemetry';
-import { executeAgentToolHandler, executeToolHandler, getToolByIdHandler, getToolsHandler } from './handlers/tools';
-import { createIndex, deleteIndex, describeIndex, listIndexes, queryVectors, upsertVectors } from './handlers/vector';
-import {
-  generateVNextNetworkHandler,
-  getVNextNetworkByIdHandler,
-  getVNextNetworksHandler,
-  streamGenerateVNextNetworkHandler,
-  loopVNextNetworkHandler,
-  loopStreamVNextNetworkHandler,
-} from './handlers/vNextNetwork';
-import { getListenerHandler, getSpeakersHandler, listenHandler, speakHandler } from './handlers/voice';
-import {
-  cancelWorkflowRunHandler,
-  createWorkflowRunHandler,
-  getWorkflowByIdHandler,
-  getWorkflowRunByIdHandler,
-  getWorkflowRunExecutionResultHandler,
-  getWorkflowRunsHandler,
-  getWorkflowsHandler,
-  resumeAsyncWorkflowHandler,
-  resumeWorkflowHandler,
-  sendWorkflowRunEventHandler,
-  startAsyncWorkflowHandler,
-  startWorkflowRunHandler,
-  streamWorkflowHandler,
-  watchWorkflowHandler,
-} from './handlers/workflows.js';
 import type { ServerBundleOptions } from './types';
 import { html } from './welcome.js';
 import { agentsRouterDev, agentsRouter } from './handlers/routes/agents';
+import { vNextNetworksRouter, networksRouter } from './handlers/routes/networks';
+import { mcpRouter } from './handlers/routes/mcp';
 import { memoryRoutes } from './handlers/routes/memory';
 import { telemetryRouter } from './handlers/routes/telemetry';
-import { vectorRouter } from './handlers/routes/vector';
-import { logsRouter } from './handlers/routes/logs';
-import { mcpRouter } from './handlers/routes/mcp';
-import { vNextNetworksRouter, networksRouter } from './handlers/routes/networks';
-import { toolsRouter } from './handlers/routes/tools';
 import { workflowsRouter } from './handlers/routes/workflows';
+import { logsRouter } from './handlers/routes/logs';
+import { toolsRouter } from './handlers/routes/tools';
+import { vectorRouter } from './handlers/routes/vector';
 
 type Bindings = {};
 

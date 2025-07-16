@@ -1,7 +1,13 @@
 import { Hono } from 'hono';
-import { describeRoute } from 'hono-openapi';
 import { bodyLimit } from 'hono/body-limit';
+import { describeRoute } from 'hono-openapi';
 import type { BodyLimitOptions } from '../../types';
+import {
+  getNetworksHandler,
+  getNetworkByIdHandler,
+  generateHandler as generateNetworkHandler,
+  streamGenerateHandler as streamGenerateNetworkHandler,
+} from '../network';
 import {
   getVNextNetworksHandler,
   getVNextNetworkByIdHandler,
@@ -10,12 +16,6 @@ import {
   loopStreamVNextNetworkHandler,
   streamGenerateVNextNetworkHandler,
 } from '../vNextNetwork';
-import {
-  getNetworksHandler,
-  getNetworkByIdHandler,
-  generateHandler as generateNetworkHandler,
-  streamGenerateHandler as streamGenerateNetworkHandler,
-} from '../network';
 
 export function vNextNetworksRouter(bodyLimitOptions: BodyLimitOptions) {
   const router = new Hono();

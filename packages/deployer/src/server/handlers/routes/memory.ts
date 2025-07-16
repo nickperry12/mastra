@@ -1,4 +1,7 @@
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
+import { describeRoute } from 'hono-openapi';
+import type { BodyLimitOptions } from '../../types';
 import {
   createThreadHandler,
   deleteThreadHandler,
@@ -11,9 +14,6 @@ import {
   updateThreadHandler,
   updateWorkingMemoryHandler,
 } from '../memory';
-import { describeRoute } from 'hono-openapi';
-import { bodyLimit } from 'hono/body-limit';
-import type { BodyLimitOptions } from '../../types';
 
 export function memoryRoutes(bodyLimitOptions: BodyLimitOptions) {
   const router = new Hono();
