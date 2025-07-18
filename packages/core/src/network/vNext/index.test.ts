@@ -1,6 +1,6 @@
-import { config } from 'dotenv';
 import { openai } from '@ai-sdk/openai';
 import type { UIMessage } from '@ai-sdk/ui-utils';
+import { config } from 'dotenv';
 import { describe, it } from 'vitest';
 import { z } from 'zod';
 import { createStep, createWorkflow } from '../..';
@@ -31,17 +31,13 @@ class MockMemory extends MastraMemory {
 
   async getWorkingMemory({
     threadId,
-    resourceId,
-    memoryConfig,
   }: {
     threadId: string;
-    resourceId?: string;
-    memoryConfig?: MemoryConfig;
   }) {
     return this.#workingMemory.get(threadId) || null;
   }
 
-  async getWorkingMemoryTemplate({ memoryConfig }: { memoryConfig?: MemoryConfig } = {}) {
+  async getWorkingMemoryTemplate({}: { memoryConfig?: MemoryConfig } = {}) {
     return {
       format: 'json' as const,
       content: '{ "test": "test" }',
@@ -54,16 +50,10 @@ class MockMemory extends MastraMemory {
 
   async __experimental_updateWorkingMemoryVNext({
     threadId,
-    resourceId,
     workingMemory,
-    searchString,
-    memoryConfig,
   }: {
     threadId: string;
-    resourceId?: string;
     workingMemory: string;
-    searchString?: string;
-    memoryConfig?: MemoryConfig;
   }): Promise<{ success: boolean; reason: string }> {
     this.#workingMemory.set(threadId, workingMemory);
     return { success: true, reason: 'Updated successfully' };

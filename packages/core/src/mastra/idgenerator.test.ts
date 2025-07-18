@@ -1,11 +1,11 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { Mastra } from './index';
-import { Agent } from '../agent';
-import { MastraMemory } from '../memory/memory';
 import { MockLanguageModelV1 } from 'ai/test';
-import type { StorageThreadType, MemoryConfig, MastraMessageV1 } from '../memory';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { Agent } from '../agent';
 import type { MastraMessageV2 } from '../agent/types';
+import type { StorageThreadType, MemoryConfig, MastraMessageV1 } from '../memory';
+import { MastraMemory } from '../memory/memory';
 import type { StorageGetMessagesArg } from '../storage';
+import { Mastra } from './index';
 
 // Mock Memory class for testing
 class MockMemory extends MastraMemory {
@@ -44,7 +44,7 @@ class MockMemory extends MastraMemory {
   async getMessages({
     threadId,
     resourceId,
-    format = 'v1',
+    format: _format = 'v1',
   }: StorageGetMessagesArg & { format?: 'v1' | 'v2' }): Promise<MastraMessageV1[]> {
     let results = Array.from(this.messages.values());
     if (threadId) results = results.filter(m => m.threadId === threadId);
@@ -112,10 +112,10 @@ class MockMemory extends MastraMemory {
   }
 
   async updateWorkingMemory({
-    threadId,
-    resourceId,
-    workingMemory,
-    memoryConfig,
+    threadId: _threadId,
+    resourceId: _resourceId,
+    workingMemory: _workingMemory,
+    memoryConfig: _memoryConfig,
   }: {
     threadId: string;
     resourceId?: string;
@@ -126,11 +126,11 @@ class MockMemory extends MastraMemory {
   }
 
   async __experimental_updateWorkingMemoryVNext({
-    threadId,
-    resourceId,
-    workingMemory,
-    searchString,
-    memoryConfig,
+    threadId: _threadId,
+    resourceId: _resourceId,
+    workingMemory: _workingMemory,
+    searchString: _searchString,
+    memoryConfig: _memoryConfig,
   }: {
     threadId: string;
     resourceId?: string;
@@ -397,17 +397,17 @@ describe('Mastra ID Generator', () => {
 
   describe('Agent ID Generation', () => {
     it('should use custom ID generator for agent message IDs', async () => {
-      const { mastra, agent } = createMastraWithMemory(customIdGenerator);
+      const { mastra: _mastra, agent } = createMastraWithMemory(customIdGenerator);
 
       // Test that the agent uses the custom ID generator for run IDs when not provided
-      const result = await agent.generate('Hello');
+      const _result = await agent.generate('Hello');
 
       // The agent should have used the custom ID generator for run IDs
       expect(customIdGenerator).toHaveBeenCalled();
     });
 
     it('should use fallback ID generator for agent message IDs when no custom generator is provided', async () => {
-      const { mastra, agent } = createMastraWithMemory();
+      const { mastra: _mastra, agent } = createMastraWithMemory();
 
       // Mock the LLM to avoid actual API calls
       vi.spyOn(agent, 'generate').mockResolvedValue({
@@ -425,10 +425,10 @@ describe('Mastra ID Generator', () => {
 
   describe('Memory ID Generation', () => {
     it('should use custom ID generator for memory operations', async () => {
-      const { mastra, agent, memory } = createMastraWithMemory(customIdGenerator);
+      const { mastra: _mastra, agent, memory: _memory } = createMastraWithMemory(customIdGenerator);
 
       // Test memory ID generation through agent
-      const agentMemory = agent.getMemory();
+      const agentMemory = await agent.getMemory();
       if (!agentMemory) throw new Error('Memory not found');
       const id = agentMemory.generateId();
 
@@ -437,10 +437,10 @@ describe('Mastra ID Generator', () => {
     });
 
     it('should use fallback ID generator for memory operations when no custom generator is provided', async () => {
-      const { mastra, agent, memory } = createMastraWithMemory();
+      const { mastra: _mastra, agent, memory: _memory } = createMastraWithMemory();
 
       // Test memory ID generation through agent
-      const agentMemory = agent.getMemory();
+      const agentMemory = await agent.getMemory();
       if (!agentMemory) throw new Error('Memory not found');
       const id = agentMemory.generateId();
 
@@ -449,9 +449,9 @@ describe('Mastra ID Generator', () => {
     });
 
     it('should use custom ID generator when creating threads and messages', async () => {
-      const { mastra, agent, memory } = createMastraWithMemory(customIdGenerator);
+      const { mastra: _mastra, agent, memory: _memory } = createMastraWithMemory(customIdGenerator);
 
-      const agentMemory = agent.getMemory();
+      const agentMemory = await agent.getMemory();
       if (!agentMemory) throw new Error('Memory not found');
 
       // Test memory ID generation directly
@@ -465,9 +465,9 @@ describe('Mastra ID Generator', () => {
 
   describe('Agent with Memory ID Generation', () => {
     it('should use custom ID generator for both agent and memory operations', async () => {
-      const { mastra, agent, memory } = createMastraWithMemory(customIdGenerator);
+      const { mastra, agent, memory: _memory } = createMastraWithMemory(customIdGenerator);
 
-      const agentMemory = agent.getMemory();
+      const agentMemory = await agent.getMemory();
       if (!agentMemory) throw new Error('Memory not found');
 
       // Test agent ID generation
@@ -484,9 +484,9 @@ describe('Mastra ID Generator', () => {
     });
 
     it('should use fallback ID generator for both agent and memory operations when no custom generator is provided', async () => {
-      const { mastra, agent, memory } = createMastraWithMemory();
+      const { mastra, agent, memory: _memory } = createMastraWithMemory();
 
-      const agentMemory = agent.getMemory();
+      const agentMemory = await agent.getMemory();
       if (!agentMemory) throw new Error('Memory not found');
 
       // Test agent ID generation

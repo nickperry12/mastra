@@ -229,50 +229,12 @@ export class Agent<
     }
 
     if (resolvedMemory && !resolvedMemory.hasOwnStorage && this.#mastra) {
-  public async getMemory({ runtimeContext = new RuntimeContext() }: { runtimeContext?: RuntimeContext } = {}): Promise<
-    MastraMemory | undefined
-  > {
-    if (!this.#memory) {
-      return undefined;
-    }
-
-    let resolvedMemory: MastraMemory;
-
-    if (typeof this.#memory !== 'function') {
-      resolvedMemory = this.#memory;
-    } else {
-      const result = this.#memory({ runtimeContext });
-      resolvedMemory = await Promise.resolve(result);
-
-      if (!resolvedMemory) {
-        const mastraError = new MastraError({
-          id: 'AGENT_GET_MEMORY_FUNCTION_EMPTY_RETURN',
-          domain: ErrorDomain.AGENT,
-          category: ErrorCategory.USER,
-          details: {
-            agentName: this.name,
-          },
-          text: `[Agent:${this.name}] - Function-based memory returned empty value`,
-        });
-        this.logger.trackException(mastraError);
-        this.logger.error(mastraError.toString());
-        throw mastraError;
-      }
-    }
-
-    if (resolvedMemory && !resolvedMemory.hasOwnStorage && this.#mastra) {
       const storage = this.#mastra.getStorage();
       if (storage) {
         resolvedMemory.setStorage(storage);
-        resolvedMemory.setStorage(storage);
       }
     }
 
-    if (resolvedMemory && this.#mastra) {
-      resolvedMemory.__registerMastra(this.#mastra);
-    }
-
-    return resolvedMemory;
     return resolvedMemory;
   }
 
@@ -725,7 +687,6 @@ export class Agent<
     systemMessage,
     messageList = new MessageList({ threadId, resourceId }),
     runtimeContext = new RuntimeContext(),
-    runtimeContext = new RuntimeContext(),
   }: {
     resourceId: string;
     threadId: string;
@@ -736,9 +697,7 @@ export class Agent<
     runId?: string;
     messageList?: MessageList;
     runtimeContext?: RuntimeContext;
-    runtimeContext?: RuntimeContext;
   }) {
-    const memory = await this.getMemory({ runtimeContext });
     const memory = await this.getMemory({ runtimeContext });
     if (memory) {
       const thread = passedThread ?? (await memory.getThreadById({ threadId }));
@@ -767,7 +726,6 @@ export class Agent<
                   config: memoryConfig,
                   vectorMessageSearch: messageList.getLatestUserContent() || '',
                 })
-                .then((r: any) => r.messagesV2),
                 .then((r: any) => r.messagesV2),
               memory.getSystemMessage({ threadId, memoryConfig }),
             ])
@@ -832,7 +790,6 @@ export class Agent<
   }) {
     let convertedMemoryTools: Record<string, CoreTool> = {};
     // Get memory tools if available
-    const memory = await this.getMemory({ runtimeContext });
     const memory = await this.getMemory({ runtimeContext });
     const memoryTools = memory?.getTools?.();
 
@@ -920,7 +877,6 @@ export class Agent<
     runtimeContext: RuntimeContext;
   }) {
     const memory = await this.getMemory({ runtimeContext });
-    const memory = await this.getMemory({ runtimeContext });
     if (!memory) {
       return [];
     }
@@ -952,7 +908,6 @@ export class Agent<
 
     this.logger.debug(`[Agents:${this.name}] - Assembling assigned tools`, { runId, threadId, resourceId });
 
-    const memory = await this.getMemory({ runtimeContext });
     const memory = await this.getMemory({ runtimeContext });
 
     // Mastra tools passed into the Agent
@@ -1013,7 +968,6 @@ export class Agent<
     let toolsForRequest: Record<string, CoreTool> = {};
 
     const memory = await this.getMemory({ runtimeContext });
-    const memory = await this.getMemory({ runtimeContext });
     const toolsFromToolsets = Object.values(toolsets || {});
 
     if (toolsFromToolsets.length > 0) {
@@ -1060,7 +1014,6 @@ export class Agent<
     clientTools?: ToolsInput;
   }) {
     let toolsForRequest: Record<string, CoreTool> = {};
-    const memory = await this.getMemory({ runtimeContext });
     const memory = await this.getMemory({ runtimeContext });
     // Convert client tools
     const clientToolsForInput = Object.entries(clientTools || {});
@@ -1303,7 +1256,6 @@ export class Agent<
         }
 
         const memory = await this.getMemory({ runtimeContext });
-        const memory = await this.getMemory({ runtimeContext });
 
         const toolEnhancements = [
           // toolsets
@@ -1320,7 +1272,6 @@ export class Agent<
           runId,
           toolsets: toolsets ? Object.keys(toolsets) : undefined,
           clientTools: clientTools ? Object.keys(clientTools) : undefined,
-          hasMemory: !!memory,
           hasMemory: !!memory,
           hasResourceId: !!resourceId,
         });
@@ -1556,7 +1507,6 @@ Message ${msg.threadId && msg.threadId !== threadObject.id ? 'from previous conv
         const messageListResponses = new MessageList({
           threadId,
           resourceId,
-          generateMessageId: this.#mastra?.generateId.bind(this.#mastra),
           // @ts-ignore Flag for agent network messages
           _agentNetworkAppend: this._agentNetworkAppend,
         })
@@ -1567,7 +1517,6 @@ Message ${msg.threadId && msg.threadId !== threadObject.id ? 'from previous conv
           m => m.role === 'tool' && m?.content?.some(c => c?.toolName === 'updateWorkingMemory'),
         );
         // working memory updates the thread, so we need to get the latest thread if we used it
-        const memory = await this.getMemory({ runtimeContext });
         const memory = await this.getMemory({ runtimeContext });
         const thread = usedWorkingMemory
           ? threadId
@@ -1658,7 +1607,7 @@ Message ${msg.threadId && msg.threadId !== threadObject.id ? 'from previous conv
           const input = userInputMessages
             .map(message => (typeof message.content === 'string' ? message.content : ''))
             .join('\n');
-          const runIdToUse = runId || this.#mastra?.generateId() || randomUUID();
+            const runIdToUse = runId || this.#mastra?.generateId() || randomUUID();
           for (const metric of Object.values(this.evals || {})) {
             executeHook(AvailableHooks.ON_GENERATION, {
               input,
@@ -1739,13 +1688,12 @@ Message ${msg.threadId && msg.threadId !== threadObject.id ? 'from previous conv
     const generateMessageId =
       `experimental_generateMessageId` in args && typeof args.experimental_generateMessageId === `function`
         ? (args.experimental_generateMessageId as IDGenerator)
-        : this.#mastra?.generateId.bind(this.#mastra);
+        : undefined;
 
     const threadFromArgs = resolveThreadIdFromArgs({ ...args, ...generateOptions });
     const resourceId = args.memory?.resource || resourceIdFromArgs;
     const memoryConfig = args.memory?.options || memoryConfigFromArgs;
 
-    if (resourceId && threadFromArgs && !this.hasOwnMemory()) {
     if (resourceId && threadFromArgs && !this.hasOwnMemory()) {
       this.logger.warn(
         `[Agent:${this.name}] - No memory is configured but resourceId and threadId were passed in args. This will not work.`,
@@ -1755,7 +1703,6 @@ Message ${msg.threadId && msg.threadId !== threadObject.id ? 'from previous conv
     const instructions = args.instructions || (await this.getInstructions({ runtimeContext }));
     const llm = await this.getLLM({ runtimeContext });
 
-    const memory = await this.getMemory({ runtimeContext });
     const memory = await this.getMemory({ runtimeContext });
     const saveQueueManager = new SaveQueueManager({
       logger: this.logger,
@@ -1999,7 +1946,6 @@ Message ${msg.threadId && msg.threadId !== threadObject.id ? 'from previous conv
     const instructions = args.instructions || (await this.getInstructions({ runtimeContext }));
     const llm = await this.getLLM({ runtimeContext });
 
-    const memory = await this.getMemory({ runtimeContext });
     const memory = await this.getMemory({ runtimeContext });
     const saveQueueManager = new SaveQueueManager({
       logger: this.logger,
