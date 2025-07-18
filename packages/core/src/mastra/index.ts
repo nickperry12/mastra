@@ -18,6 +18,8 @@ import type { MastraVector } from '../vector';
 import type { Workflow } from '../workflows';
 import type { LegacyWorkflow } from '../workflows/legacy';
 
+type NonEmpty<T extends string> = T extends '' ? never : T;
+
 export interface Config<
   TAgents extends Record<string, Agent<any>> = Record<string, Agent<any>>,
   TLegacyWorkflows extends Record<string, LegacyWorkflow> = Record<string, LegacyWorkflow>,
@@ -39,7 +41,7 @@ export interface Config<
   workflows?: TWorkflows;
   tts?: TTTS;
   telemetry?: OtelConfig;
-  idGenerator?: () => string;
+  idGenerator?: () => NonEmpty<string>;
   deployer?: MastraDeployer;
   server?: ServerConfig;
   mcpServers?: TMCPServers;
@@ -93,7 +95,7 @@ export class Mastra<
   #server?: ServerConfig;
   #mcpServers?: TMCPServers;
   #bundler?: BundlerConfig;
-  #idGenerator?: () => string;
+  #idGenerator?: () => NonEmpty<string>;
 
   /**
    * @deprecated use getTelemetry() instead
@@ -126,7 +128,18 @@ export class Mastra<
    */
   public generateId(): string {
     if (this.#idGenerator) {
-      return this.#idGenerator();
+      const id = this.#idGenerator();
+      if (!id) {
+        const error = new MastraError({
+          id: 'MASTRA_ID_GENERATOR_RETURNED_EMPTY_STRING',
+          domain: ErrorDomain.MASTRA,
+          category: ErrorCategory.USER,
+          text: 'ID generator returned an empty string, which is not allowed',
+        });
+        this.#logger?.trackException(error);
+        throw error;
+      }
+      return id;
     }
     return crypto.randomUUID();
   }

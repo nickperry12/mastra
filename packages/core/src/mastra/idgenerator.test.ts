@@ -6,6 +6,7 @@ import type { StorageThreadType, MemoryConfig, MastraMessageV1 } from '../memory
 import { MastraMemory } from '../memory/memory';
 import type { StorageGetMessagesArg } from '../storage';
 import { Mastra } from './index';
+import { MastraError } from '../error';
 
 // Mock Memory class for testing
 class MockMemory extends MastraMemory {
@@ -348,9 +349,9 @@ describe('Mastra ID Generator', () => {
         logger: false,
       });
 
-      const id = mastra.generateId();
-      expect(id).toBe('');
-      expect(emptyIdGenerator).toHaveBeenCalledTimes(1);
+      expect(() => mastra.generateId()).toThrow(MastraError);
+      expect(() => mastra.generateId()).toThrow('ID generator returned an empty string, which is not allowed');
+      expect(emptyIdGenerator).toHaveBeenCalledTimes(2);
     });
   });
 
