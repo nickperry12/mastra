@@ -144,7 +144,7 @@ export class Mastra<
     return crypto.randomUUID();
   }
 
-  public setIdGenerator(idGenerator: () => string) {
+  public setIdGenerator(idGenerator: () => NonEmpty<string>) {
     this.#idGenerator = idGenerator;
   }
 
