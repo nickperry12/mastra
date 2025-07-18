@@ -1,3 +1,4 @@
+import { config } from 'dotenv';
 import { openai } from '@ai-sdk/openai';
 import type { UIMessage } from '@ai-sdk/ui-utils';
 import { describe, it } from 'vitest';
@@ -11,6 +12,8 @@ import { MastraMemory } from '../../memory';
 import { RuntimeContext } from '../../runtime-context';
 import { createTool } from '../../tools/index';
 import { NewAgentNetwork } from './index';
+
+config();
 
 class MockMemory extends MastraMemory {
   #byResourceId: Map<string, any[]> = new Map();
@@ -26,11 +29,19 @@ class MockMemory extends MastraMemory {
     });
   }
 
-  async getWorkingMemory({ threadId }: { threadId: string }) {
+  async getWorkingMemory({
+    threadId,
+    resourceId,
+    memoryConfig,
+  }: {
+    threadId: string;
+    resourceId?: string;
+    memoryConfig?: MemoryConfig;
+  }) {
     return this.#workingMemory.get(threadId) || null;
   }
 
-  async getWorkingMemoryTemplate() {
+  async getWorkingMemoryTemplate({ memoryConfig }: { memoryConfig?: MemoryConfig } = {}) {
     return {
       format: 'json' as const,
       content: '{ "test": "test" }',
@@ -39,6 +50,23 @@ class MockMemory extends MastraMemory {
 
   async updateWorkingMemory({ threadId, workingMemory }: { threadId: string; workingMemory: string }) {
     this.#workingMemory.set(threadId, workingMemory);
+  }
+
+  async __experimental_updateWorkingMemoryVNext({
+    threadId,
+    resourceId,
+    workingMemory,
+    searchString,
+    memoryConfig,
+  }: {
+    threadId: string;
+    resourceId?: string;
+    workingMemory: string;
+    searchString?: string;
+    memoryConfig?: MemoryConfig;
+  }): Promise<{ success: boolean; reason: string }> {
+    this.#workingMemory.set(threadId, workingMemory);
+    return { success: true, reason: 'Updated successfully' };
   }
 
   async getThreadsByResourceId({ resourceId }: { resourceId: string }) {
