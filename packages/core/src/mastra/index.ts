@@ -214,6 +214,10 @@ export class Mastra<
       this.#vectors = vectors as TVectors;
     }
 
+    if (config?.vectors) {
+      this.#vectors = config.vectors;
+    }
+
     if (config?.networks) {
       this.#networks = config.networks;
     }
