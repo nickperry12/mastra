@@ -131,6 +131,10 @@ export class Mastra<
     return crypto.randomUUID();
   }
 
+  public setIdGenerator(idGenerator: () => string) {
+    this.#idGenerator = idGenerator;
+  }
+
   constructor(
     config?: Config<
       TAgents,

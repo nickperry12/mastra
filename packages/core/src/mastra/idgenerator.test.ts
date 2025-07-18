@@ -143,6 +143,40 @@ class MockMemory extends MastraMemory {
   }
 }
 
+// Helper function to create a Mastra instance with proper memory registration
+function createMastraWithMemory(idGenerator?: () => string) {
+  const mastra = new Mastra({
+    idGenerator,
+    logger: false,
+  });
+
+  // Create a mock memory instance
+  const memory = new MockMemory();
+  
+  // Register the memory with Mastra
+  memory.__registerMastra(mastra);
+
+  // Create an agent with the registered memory
+  const agent = new Agent({
+    name: 'testAgent',
+    instructions: 'You are a test agent',
+    model: new MockLanguageModelV1({
+      doGenerate: async () => ({
+        rawCall: { rawPrompt: null, rawSettings: {} },
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+        text: 'Test response',
+      }),
+    }),
+    memory,
+  });
+
+  // Register the agent with Mastra
+  agent.__registerMastra(mastra);
+
+  return { mastra, agent, memory };
+}
+
 describe('Mastra ID Generator', () => {
   let customIdGenerator: () => string;
   let idCounter: number;
@@ -363,26 +397,7 @@ describe('Mastra ID Generator', () => {
 
   describe('Agent ID Generation', () => {
     it('should use custom ID generator for agent message IDs', async () => {
-      const mastra = new Mastra({
-        idGenerator: customIdGenerator,
-        logger: false,
-        agents: {
-          testAgent: new Agent({
-            name: 'testAgent',
-            instructions: 'You are a test agent',
-            model: new MockLanguageModelV1({
-              doGenerate: async () => ({
-                rawCall: { rawPrompt: null, rawSettings: {} },
-                finishReason: 'stop',
-                usage: { promptTokens: 10, completionTokens: 20 },
-                text: 'Test response',
-              }),
-            }),
-          }),
-        },
-      });
-
-      const agent = mastra.getAgent('testAgent');
+      const { mastra, agent } = createMastraWithMemory(customIdGenerator);
 
       // Test that the agent uses the custom ID generator for run IDs when not provided
       const result = await agent.generate('Hello');
@@ -392,25 +407,7 @@ describe('Mastra ID Generator', () => {
     });
 
     it('should use fallback ID generator for agent message IDs when no custom generator is provided', async () => {
-      const mastra = new Mastra({
-        logger: false,
-        agents: {
-          testAgent: new Agent({
-            name: 'testAgent',
-            instructions: 'You are a test agent',
-            model: new MockLanguageModelV1({
-              doGenerate: async () => ({
-                rawCall: { rawPrompt: null, rawSettings: {} },
-                finishReason: 'stop',
-                usage: { promptTokens: 10, completionTokens: 20 },
-                text: 'Test response',
-              }),
-            }),
-          }),
-        },
-      });
-
-      const agent = mastra.getAgent('testAgent');
+      const { mastra, agent } = createMastraWithMemory();
 
       // Mock the LLM to avoid actual API calls
       vi.spyOn(agent, 'generate').mockResolvedValue({
@@ -428,93 +425,37 @@ describe('Mastra ID Generator', () => {
 
   describe('Memory ID Generation', () => {
     it('should use custom ID generator for memory operations', async () => {
-      const mastra = new Mastra({
-        idGenerator: customIdGenerator,
-        logger: false,
-        agents: {
-          testAgent: new Agent({
-            name: 'testAgent',
-            instructions: 'You are a test agent',
-            model: new MockLanguageModelV1({
-              doGenerate: async () => ({
-                rawCall: { rawPrompt: null, rawSettings: {} },
-                finishReason: 'stop',
-                usage: { promptTokens: 10, completionTokens: 20 },
-                text: 'Test response',
-              }),
-            }),
-            memory: new MockMemory(),
-          }),
-        },
-      });
+      const { mastra, agent, memory } = createMastraWithMemory(customIdGenerator);
 
       // Test memory ID generation through agent
-      const agent = mastra.getAgent('testAgent');
-      const memory = await agent.getMemory();
-      if (!memory) throw new Error('Memory not found');
-      const id = memory.generateId();
+      const agentMemory = agent.getMemory();
+      if (!agentMemory) throw new Error('Memory not found');
+      const id = agentMemory.generateId();
 
       expect(customIdGenerator).toHaveBeenCalled();
       expect(id).toMatch(/^custom-id-\d+$/);
     });
 
     it('should use fallback ID generator for memory operations when no custom generator is provided', async () => {
-      const mastra = new Mastra({
-        logger: false,
-        agents: {
-          testAgent: new Agent({
-            name: 'testAgent',
-            instructions: 'You are a test agent',
-            model: new MockLanguageModelV1({
-              doGenerate: async () => ({
-                rawCall: { rawPrompt: null, rawSettings: {} },
-                finishReason: 'stop',
-                usage: { promptTokens: 10, completionTokens: 20 },
-                text: 'Test response',
-              }),
-            }),
-            memory: new MockMemory(),
-          }),
-        },
-      });
+      const { mastra, agent, memory } = createMastraWithMemory();
 
       // Test memory ID generation through agent
-      const agent = mastra.getAgent('testAgent');
-      const memory = await agent.getMemory();
-      if (!memory) throw new Error('Memory not found');
-      const id = memory.generateId();
+      const agentMemory = agent.getMemory();
+      if (!agentMemory) throw new Error('Memory not found');
+      const id = agentMemory.generateId();
 
       expect(customIdGenerator).not.toHaveBeenCalled();
       expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     });
 
     it('should use custom ID generator when creating threads and messages', async () => {
-      const mastra = new Mastra({
-        idGenerator: customIdGenerator,
-        logger: false,
-        agents: {
-          testAgent: new Agent({
-            name: 'testAgent',
-            instructions: 'You are a test agent',
-            model: new MockLanguageModelV1({
-              doGenerate: async () => ({
-                rawCall: { rawPrompt: null, rawSettings: {} },
-                finishReason: 'stop',
-                usage: { promptTokens: 10, completionTokens: 20 },
-                text: 'Test response',
-              }),
-            }),
-            memory: new MockMemory(),
-          }),
-        },
-      });
+      const { mastra, agent, memory } = createMastraWithMemory(customIdGenerator);
 
-      const agent = mastra.getAgent('testAgent');
-      const memory = await agent.getMemory();
-      if (!memory) throw new Error('Memory not found');
+      const agentMemory = agent.getMemory();
+      if (!agentMemory) throw new Error('Memory not found');
 
       // Test memory ID generation directly
-      const id = memory.generateId();
+      const id = agentMemory.generateId();
 
       // The memory should have used the custom ID generator
       expect(customIdGenerator).toHaveBeenCalled();
@@ -524,36 +465,17 @@ describe('Mastra ID Generator', () => {
 
   describe('Agent with Memory ID Generation', () => {
     it('should use custom ID generator for both agent and memory operations', async () => {
-      const mastra = new Mastra({
-        idGenerator: customIdGenerator,
-        logger: false,
-        agents: {
-          testAgent: new Agent({
-            name: 'testAgent',
-            instructions: 'You are a test agent',
-            model: new MockLanguageModelV1({
-              doGenerate: async () => ({
-                rawCall: { rawPrompt: null, rawSettings: {} },
-                finishReason: 'stop',
-                usage: { promptTokens: 10, completionTokens: 20 },
-                text: 'Test response',
-              }),
-            }),
-            memory: new MockMemory(),
-          }),
-        },
-      });
+      const { mastra, agent, memory } = createMastraWithMemory(customIdGenerator);
 
-      const agent = mastra.getAgent('testAgent');
-      const memory = await agent.getMemory();
-      if (!memory) throw new Error('Memory not found');
+      const agentMemory = agent.getMemory();
+      if (!agentMemory) throw new Error('Memory not found');
 
       // Test agent ID generation
       const agentId = mastra.generateId();
       expect(customIdGenerator).toHaveBeenCalled();
 
       // Test memory ID generation
-      const memoryId = memory.generateId();
+      const memoryId = agentMemory.generateId();
       expect(customIdGenerator).toHaveBeenCalled();
 
       // Both should use the same custom ID generator
@@ -562,35 +484,17 @@ describe('Mastra ID Generator', () => {
     });
 
     it('should use fallback ID generator for both agent and memory operations when no custom generator is provided', async () => {
-      const mastra = new Mastra({
-        logger: false,
-        agents: {
-          testAgent: new Agent({
-            name: 'testAgent',
-            instructions: 'You are a test agent',
-            model: new MockLanguageModelV1({
-              doGenerate: async () => ({
-                rawCall: { rawPrompt: null, rawSettings: {} },
-                finishReason: 'stop',
-                usage: { promptTokens: 10, completionTokens: 20 },
-                text: 'Test response',
-              }),
-            }),
-            memory: new MockMemory(),
-          }),
-        },
-      });
+      const { mastra, agent, memory } = createMastraWithMemory();
 
-      const agent = mastra.getAgent('testAgent');
-      const memory = await agent.getMemory();
-      if (!memory) throw new Error('Memory not found');
+      const agentMemory = agent.getMemory();
+      if (!agentMemory) throw new Error('Memory not found');
 
       // Test agent ID generation
       const agentId = mastra.generateId();
       expect(customIdGenerator).not.toHaveBeenCalled();
 
       // Test memory ID generation
-      const memoryId = memory.generateId();
+      const memoryId = agentMemory.generateId();
       expect(customIdGenerator).not.toHaveBeenCalled();
 
       // Both should use the fallback UUID generator
