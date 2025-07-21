@@ -31,7 +31,7 @@ describe('Remove deployer', () => {
             };
           },
         },
-        removeDeployer(file),
+        removeDeployer(file, { sourcemap: false }),
         esbuild({
           target: `esnext`,
           platform: 'node',

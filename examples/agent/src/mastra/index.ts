@@ -6,6 +6,14 @@ import { chefAgent, chefAgentResponses, dynamicAgent } from './agents/index';
 import { myMcpServer, myMcpServerTwo } from './mcp/server';
 import { myWorkflow } from './workflows';
 
+console.log('Breakpoint on line 9');
+console.log('Breakpoint on line 10');
+console.log('Breakpoint on line 11');
+console.log('Breakpoint on line 12');
+console.log('Breakpoint on line 13');
+console.log('Breakpoint on line 14');
+console.log('Breakpoint on line 15');
+
 const storage = new LibSQLStore({
   url: 'file:./mastra.db',
 });
