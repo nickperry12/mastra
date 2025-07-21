@@ -2,11 +2,11 @@ import { MockLanguageModelV1 } from 'ai/test';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { Agent } from '../agent';
 import type { MastraMessageV2 } from '../agent/types';
+import { MastraError } from '../error';
 import type { StorageThreadType, MemoryConfig, MastraMessageV1 } from '../memory';
 import { MastraMemory } from '../memory/memory';
 import type { StorageGetMessagesArg } from '../storage';
 import { Mastra } from './index';
-import { MastraError } from '../error';
 
 // Mock Memory class for testing
 class MockMemory extends MastraMemory {
