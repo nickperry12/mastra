@@ -2019,7 +2019,6 @@ describe('PgVector', () => {
           const resultAfterRollback = await client.query('SHOW hnsw.ef_search');
           const valueAfterRollback = resultAfterRollback.rows[0]['hnsw.ef_search'];
           expect(parseInt(valueAfterRollback)).not.toBe(500);
-
         } finally {
           client.release();
         }
@@ -2039,11 +2038,11 @@ describe('PgVector', () => {
           return originalClientQuery.call(client, query, ...args);
         });
         client.query = clientQuerySpy;
-        
+
         try {
           // Manually release the client so query() can get a fresh one
           client.release();
-          
+
           await vectorDB.query({
             indexName,
             queryVector: [1, 0, 0],
@@ -2056,22 +2055,20 @@ describe('PgVector', () => {
             // Test that SET LOCAL works within a transaction
             await testClient.query('BEGIN');
             await testClient.query('SET LOCAL hnsw.ef_search = 256');
-            
+
             const result = await testClient.query('SHOW hnsw.ef_search');
             const value = result.rows[0]['hnsw.ef_search'];
             expect(parseInt(value)).toBe(256);
 
             await testClient.query('ROLLBACK');
-            
+
             // After rollback, should revert
             const resultAfter = await testClient.query('SHOW hnsw.ef_search');
             const valueAfter = resultAfter.rows[0]['hnsw.ef_search'];
             expect(parseInt(valueAfter)).not.toBe(256);
-
           } finally {
             testClient.release();
           }
-
         } finally {
           // Restore original function if client is still connected
           if (client.query === clientQuerySpy) {
@@ -2082,7 +2079,7 @@ describe('PgVector', () => {
       });
     });
 
-     describe('IVF Parameters', () => {
+    describe('IVF Parameters', () => {
       beforeAll(async () => {
         await vectorDB.createIndex({
           indexName,
