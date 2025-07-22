@@ -3,6 +3,7 @@ import type { UpstashVectorFilter } from './filter';
 import type {
   QueryVectorParams,
   UpsertVectorParams,
+  UpdateVectorParams,
 } from '@mastra/core/vector';
 import type {
   FusionAlgorithm,
@@ -24,4 +25,8 @@ export interface UpstashQueryVectorParams extends QueryVectorParams<UpstashVecto
   sparseVector?: UpstashSparseVector;
   fusionAlgorithm?: FusionAlgorithm.RRF | FusionAlgorithm.DBSF;
   queryMode?: QueryMode;
+}
+
+export interface UpstashUpdateVectorParams extends UpdateVectorParams {
+  sparseVector?: UpstashSparseVector;
 }

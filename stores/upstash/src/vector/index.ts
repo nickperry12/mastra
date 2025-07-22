@@ -16,7 +16,8 @@ import type { SparseVector as UpstashSparseVector } from '../../../../packages/c
 import type {
   UpstashVectorPoint,
   UpstashUpsertVectorParams,
-  UpstashQueryVectorParams
+  UpstashQueryVectorParams,
+  UpstashUpdateVectorParams
 } from './types';
 
 
@@ -269,10 +270,11 @@ export class UpstashVector extends MastraVector<UpstashVectorFilter> {
    * @param update - An object containing the vector and/or metadata to update.
    * @param update.vector - An optional array of numbers representing the new vector.
    * @param update.metadata - An optional record containing the new metadata.
+   * @param sparseVector - An optional sparse vector for Hybrid index compatibility.
    * @returns A promise that resolves when the update is complete.
    * @throws Will throw an error if no updates are provided or if the update operation fails.
    */
-  async updateVector({ indexName: namespace, id, update }: UpdateVectorParams): Promise<void> {
+  async updateVector({ indexName: namespace, id, update, sparseVector }: UpstashUpdateVectorParams): Promise<void> {
     try {
       if (!update.vector && !update.metadata) {
         throw new Error('No update data provided');
@@ -308,6 +310,7 @@ export class UpstashVector extends MastraVector<UpstashVectorFilter> {
         id: updatePayload.id,
         vector: updatePayload.vector,
         metadata: updatePayload.metadata,
+        ...(sparseVector && { sparseVector }),
       };
 
       await this.client.upsert(points, {
