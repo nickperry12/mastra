@@ -7,16 +7,18 @@ import type {
   DescribeIndexParams,
   IndexStats,
   QueryResult,
-  QueryVectorParams,
   UpdateVectorParams,
-  UpsertVectorParams,
 } from '@mastra/core/vector';
 import { Index } from '@upstash/vector';
-
 import { UpstashFilterTranslator } from './filter';
 import type { UpstashVectorFilter } from './filter';
+import type { SparseVector as UpstashSparseVector } from '../../../../packages/core/src/vector/types';
+import type {
+  UpstashVectorPoint,
+  UpstashUpsertVectorParams,
+  UpstashQueryVectorParams
+} from './types';
 
-type UpstashQueryVectorParams = QueryVectorParams<UpstashVectorFilter>;
 
 export class UpstashVector extends MastraVector<UpstashVectorFilter> {
   private client: Index;
@@ -36,18 +38,70 @@ export class UpstashVector extends MastraVector<UpstashVectorFilter> {
   }
 
   /**
+   * Validates sparse vectors to ensure indices and values arrays match in length
+   */
+  private validateSparseVectors(sparseVectors: UpstashSparseVector[]): void {
+    for (let i = 0; i < sparseVectors.length; i++) {
+      const sparse = sparseVectors[i];
+      if (sparse && sparse.indices.length !== sparse.values.length) {
+        throw new MastraError({
+          id: 'STORAGE_UPSTASH_VECTOR_SPARSE_VECTOR_MISMATCH',
+          domain: ErrorDomain.STORAGE,
+          category: ErrorCategory.USER,
+          text: `Sparse vector at index ${i} has mismatched indices and values lengths`,
+          details: { index: i, indicesLength: sparse.indices.length, valuesLength: sparse.values.length },
+        });
+      }
+    }
+  }
+
+  /**
+   * Creates a vector point for upsert operation
+   */
+  private createVectorPoint(
+    vector: number[],
+    id: string,
+    metadata?: Record<string, any>,
+    sparseVector?: UpstashSparseVector,
+  ): UpstashVectorPoint {
+    const point: UpstashVectorPoint = {
+      id,
+      vector,
+    };
+
+    if (metadata) {
+      point.metadata = metadata;
+    }
+
+    // Only include sparseVector if it exists and has data
+    if (sparseVector && sparseVector.indices.length > 0) {
+      point.sparseVector = sparseVector;
+    }
+
+    return point;
+  }
+
+  /**
    * Upserts vectors into the index.
    * @param {UpsertVectorParams} params - The parameters for the upsert operation.
    * @returns {Promise<string[]>} A promise that resolves to the IDs of the upserted vectors.
    */
-  async upsert({ indexName: namespace, vectors, metadata, ids }: UpsertVectorParams): Promise<string[]> {
+  async upsert({ indexName: namespace, vectors, sparseVectors, metadata, ids }: UpstashUpsertVectorParams): Promise<string[]> {
     const generatedIds = ids || vectors.map(() => crypto.randomUUID());
 
-    const points = vectors.map((vector, index) => ({
-      id: generatedIds[index]!,
-      vector,
-      metadata: metadata?.[index],
-    }));
+    // Validate sparse vectors if provided
+    if (sparseVectors) {
+      this.validateSparseVectors(sparseVectors);
+    }
+
+    const points: UpstashVectorPoint[] = vectors.map((vector, index) =>
+      this.createVectorPoint(
+        vector,
+        generatedIds[index]!,
+        metadata?.[index],
+        sparseVectors?.[index],
+      ),
+    );
 
     try {
       await this.client.upsert(points, {
@@ -94,21 +148,30 @@ export class UpstashVector extends MastraVector<UpstashVectorFilter> {
   async query({
     indexName: namespace,
     queryVector,
+    sparseVector,
     topK = 10,
     filter,
     includeVector = false,
+    fusionAlgorithm,
+    queryMode,
   }: UpstashQueryVectorParams): Promise<QueryResult[]> {
     try {
       const ns = this.client.namespace(namespace);
-
       const filterString = this.transformFilter(filter);
-      const results = await ns.query({
+
+      // Build query parameters - using type assertion to handle Upstash's complex union types
+      const queryParams = {
         topK,
-        vector: queryVector,
         includeVectors: includeVector,
         includeMetadata: true,
-        ...(filterString ? { filter: filterString } : {}),
-      });
+        ...(queryVector && { vector: queryVector }),
+        ...(sparseVector && sparseVector.indices.length > 0 && { sparseVector }),
+        ...(filterString && { filter: filterString }),
+        ...(queryVector && sparseVector && sparseVector.indices.length > 0 && fusionAlgorithm && { fusionAlgorithm }),
+        ...(queryMode && { queryMode }),
+      };
+
+      const results = await ns.query(queryParams);
 
       // Map the results to our expected format
       return (results || []).map(result => ({

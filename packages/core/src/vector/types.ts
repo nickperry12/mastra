@@ -1,5 +1,10 @@
 import type { VectorFilter } from './filter';
 
+export interface SparseVector {
+  indices: number[];
+  values: number[];
+}
+
 export interface QueryResult {
   id: string;
   score: number;
@@ -38,6 +43,7 @@ export interface QueryVectorParams<Filter = VectorFilter> {
   topK?: number;
   filter?: Filter;
   includeVector?: boolean;
+  sparseVector?: SparseVector;
 }
 
 export interface DescribeIndexParams {
