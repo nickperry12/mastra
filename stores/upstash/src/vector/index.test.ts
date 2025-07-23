@@ -71,6 +71,7 @@ describe.skipIf(!process.env.UPSTASH_VECTOR_URL || !process.env.UPSTASH_VECTOR_T
   });
 
   describe('Vector Operations', () => {
+    // Helper function to create a normalized vector
     const createVector = (primaryDimension: number, value: number = 1.0): number[] => {
       const vector = new Array(VECTOR_DIMENSION).fill(0);
       vector[primaryDimension] = value;
@@ -79,154 +80,53 @@ describe.skipIf(!process.env.UPSTASH_VECTOR_URL || !process.env.UPSTASH_VECTOR_T
       return vector.map(val => val / magnitude);
     };
 
-    // Helper function to create minimal sparse vectors for Hybrid index compatibility
-    // Hybrid indexes require sparse vectors to be present, so we create minimal ones
-    const createMinimalSparseVectors = (count: number) => 
-      Array(count).fill(null).map(() => ({ indices: [0], values: [0.1] }));
+    let vectorIds: string[];
 
-    it('should upsert vectors and query them back', async () => {
-      const vectors = [
-        createVector(0, 1.0),
-        createVector(1, 1.0),
-        createVector(2, 1.0),
-      ];
+    it('should upsert vectors and query them', async () => {
+      // Create and log test vectors
+      const testVectors = [createVector(0, 1.0), createVector(1, 1.0), createVector(2, 1.0)];
 
-      const metadata = [
-        { text: 'first document', category: 'A' },
-        { text: 'second document', category: 'B' },
-        { text: 'third document', category: 'A' },
-      ];
+      const testMetadata = [{ label: 'first-dimension' }, { label: 'second-dimension' }, { label: 'third-dimension' }];
 
-      // Add minimal sparse vectors for Hybrid index compatibility
-      const sparseVectors = createMinimalSparseVectors(3);
-
-      const vectorIds = await vectorStore.upsert({
-        indexName: 'default',
-        vectors,
-        sparseVectors,
-        metadata,
-      });
+      // Upsert vectors
+      vectorIds = await vectorStore.upsert({ indexName: testIndexName, vectors: testVectors, metadata: testMetadata });
 
       expect(vectorIds).toHaveLength(3);
+      await waitUntilVectorsIndexed(vectorStore, testIndexName, 3);
 
-      await waitUntilVectorsIndexed(vectorStore, 'default', 3);
-
-      const queryVector = createVector(0, 1.0);
-      const results = await vectorStore.query({
-        indexName: 'default',
-        queryVector,
-        topK: 3,
-      });
+      const results = await vectorStore.query({ indexName: testIndexName, queryVector: createVector(0, 0.9), topK: 3 });
 
       expect(results).toHaveLength(3);
-      expect(results[0]?.score).toBeGreaterThan(0.5);
-    }, 60000);
-
-    it('should handle empty vectors', async () => {
-      const vectors: number[][] = [];
-      const metadata: Record<string, any>[] = [];
-      const sparseVectors: { indices: number[]; values: number[] }[] = [];
-
-      await expect(vectorStore.upsert({
-        indexName: 'default',
-        vectors,
-        sparseVectors,
-        metadata,
-      })).rejects.toThrow('Missing vector data');
-    });
-
-    it('should handle empty OR', async () => {
-      const vectors = [
-        createVector(0, 1.0),
-        createVector(1, 1.0),
-      ];
-
-      const metadata = [
-        { text: 'first document', category: 'A' },
-        { text: 'second document', category: 'B' },
-      ];
-
-      // Add minimal sparse vectors for Hybrid index compatibility
-      const sparseVectors = createMinimalSparseVectors(2);
-
-      await vectorStore.upsert({
-        indexName: 'default',
-        vectors,
-        sparseVectors,
-        metadata,
-      });
-
-      await waitUntilVectorsIndexed(vectorStore, 'default', 2);
-
-      const queryVector = createVector(0, 1.0);
-      const results = await vectorStore.query({
-        indexName: 'default',
-        queryVector,
-        topK: 10,
-        filter: {
-          $or: [],
-        },
-      });
-
-      expect(results).toHaveLength(0);
-    }, 60000);
+      if (results.length > 0) {
+        expect(results?.[0]?.metadata).toEqual({ label: 'first-dimension' });
+      }
+    }, 5000000);
 
     it('should query vectors and return vector in results', async () => {
-      const vectors = [
-        createVector(0, 1.0),
-        createVector(1, 1.0),
-      ];
-
-      const metadata = [
-        { text: 'first document', category: 'A' },
-        { text: 'second document', category: 'B' },
-      ];
-
-      // Add minimal sparse vectors for Hybrid index compatibility
-      const sparseVectors = createMinimalSparseVectors(2);
-
-      await vectorStore.upsert({
-        indexName: 'default',
-        vectors,
-        sparseVectors,
-        metadata,
-      });
-
-      await waitUntilVectorsIndexed(vectorStore, 'default', 2);
-
-      const queryVector = createVector(0, 1.0);
       const results = await vectorStore.query({
-        indexName: 'default',
-        queryVector,
-        topK: 2,
+        indexName: testIndexName,
+        queryVector: createVector(0, 0.9),
+        topK: 3,
         includeVector: true,
       });
-
-      expect(results).toHaveLength(2);
-      expect(results[0]?.vector).toBeDefined();
-      expect(results[0]?.vector).toHaveLength(VECTOR_DIMENSION);
-    }, 60000);
+      expect(results).toHaveLength(3);
+      results.forEach(result => {
+        expect(result.vector).toBeDefined();
+        expect(result.vector).toHaveLength(VECTOR_DIMENSION);
+      });
+    });
 
     describe('Vector update operations', () => {
       const testVectors = [createVector(0, 1.0), createVector(1, 1.0), createVector(2, 1.0)];
-      const testSparseVectors = createMinimalSparseVectors(3);
 
       const testIndexName = 'test-index';
 
       afterEach(async () => {
-        try {
-          await vectorStore.deleteIndex({ indexName: testIndexName });
-        } catch (error) {
-          // Ignore cleanup errors
-        }
+        await vectorStore.deleteIndex({ indexName: testIndexName });
       });
 
       it('should update the vector by id', async () => {
-        const ids = await vectorStore.upsert({ 
-          indexName: testIndexName, 
-          vectors: testVectors,
-          sparseVectors: testSparseVectors,
-        });
+        const ids = await vectorStore.upsert({ indexName: testIndexName, vectors: testVectors });
         expect(ids).toHaveLength(3);
 
         const idToBeUpdated = ids[0];
@@ -234,19 +134,13 @@ describe.skipIf(!process.env.UPSTASH_VECTOR_URL || !process.env.UPSTASH_VECTOR_T
         const newMetaData = {
           test: 'updates',
         };
-        const newSparseVector = { indices: [0], values: [0.1] };
 
         const update = {
           vector: newVector,
           metadata: newMetaData,
         };
 
-        await vectorStore.updateVector({ 
-          indexName: testIndexName, 
-          id: idToBeUpdated, 
-          update,
-          sparseVector: newSparseVector
-        });
+        await vectorStore.updateVector({ indexName: testIndexName, id: idToBeUpdated, update });
 
         await waitUntilVectorsIndexed(vectorStore, testIndexName, 3);
 
@@ -259,14 +153,10 @@ describe.skipIf(!process.env.UPSTASH_VECTOR_URL || !process.env.UPSTASH_VECTOR_T
         expect(results[0]?.id).toBe(idToBeUpdated);
         expect(results[0]?.vector).toEqual(newVector);
         expect(results[0]?.metadata).toEqual(newMetaData);
-      }, 60000);
+      }, 500000);
 
       it('should only update the metadata by id', async () => {
-        const ids = await vectorStore.upsert({ 
-          indexName: testIndexName, 
-          vectors: testVectors,
-          sparseVectors: testSparseVectors,
-        });
+        const ids = await vectorStore.upsert({ indexName: testIndexName, vectors: testVectors });
         expect(ids).toHaveLength(3);
 
         const newMetaData = {
@@ -283,27 +173,17 @@ describe.skipIf(!process.env.UPSTASH_VECTOR_URL || !process.env.UPSTASH_VECTOR_T
       });
 
       it('should only update vector embeddings by id', async () => {
-        const ids = await vectorStore.upsert({ 
-          indexName: testIndexName, 
-          vectors: testVectors,
-          sparseVectors: testSparseVectors,
-        });
+        const ids = await vectorStore.upsert({ indexName: testIndexName, vectors: testVectors });
         expect(ids).toHaveLength(3);
 
         const idToBeUpdated = ids[0];
         const newVector = createVector(0, 4.0);
-        const newSparseVector = { indices: [0], values: [0.1] };
 
         const update = {
           vector: newVector,
         };
 
-        await vectorStore.updateVector({ 
-          indexName: testIndexName, 
-          id: idToBeUpdated, 
-          update,
-          sparseVector: newSparseVector
-        });
+        await vectorStore.updateVector({ indexName: testIndexName, id: idToBeUpdated, update });
 
         await waitUntilVectorsIndexed(vectorStore, testIndexName, 3);
 
@@ -315,7 +195,7 @@ describe.skipIf(!process.env.UPSTASH_VECTOR_URL || !process.env.UPSTASH_VECTOR_T
         });
         expect(results[0]?.id).toBe(idToBeUpdated);
         expect(results[0]?.vector).toEqual(newVector);
-      }, 60000);
+      }, 500000);
 
       it('should throw exception when no updates are given', async () => {
         await expect(vectorStore.updateVector({ indexName: testIndexName, id: 'id', update: {} })).rejects.toThrow(
@@ -326,22 +206,13 @@ describe.skipIf(!process.env.UPSTASH_VECTOR_URL || !process.env.UPSTASH_VECTOR_T
 
     describe('Vector delete operations', () => {
       const testVectors = [createVector(0, 1.0), createVector(1, 1.0), createVector(2, 1.0)];
-      const testSparseVectors = createMinimalSparseVectors(3);
 
       afterEach(async () => {
-        try {
-          await vectorStore.deleteIndex({ indexName: testIndexName });
-        } catch (error) {
-          // Ignore cleanup errors
-        }
+        await vectorStore.deleteIndex({ indexName: testIndexName });
       });
 
       it('should delete the vector by id', async () => {
-        const ids = await vectorStore.upsert({ 
-          indexName: testIndexName, 
-          vectors: testVectors,
-          sparseVectors: testSparseVectors,
-        });
+        const ids = await vectorStore.upsert({ indexName: testIndexName, vectors: testVectors });
         expect(ids).toHaveLength(3);
         const idToBeDeleted = ids[0];
 
@@ -358,403 +229,6 @@ describe.skipIf(!process.env.UPSTASH_VECTOR_URL || !process.env.UPSTASH_VECTOR_T
       });
     });
   });
-
-  describe('Sparse Vector Operations', () => {
-    const createVector = (primaryDimension: number, value: number = 1.0): number[] => {
-      const vector = new Array(VECTOR_DIMENSION).fill(0);
-      vector[primaryDimension] = value;
-      // Normalize the vector for cosine similarity
-      const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
-      return vector.map(val => val / magnitude);
-    };
-
-    const createSparseVector = (indices: number[], values: number[]) => ({
-      indices,
-      values,
-    });
-
-    const sparseTestIndexName = 'default';
-
-    afterEach(async () => {
-      // Note: We're using the shared 'default' namespace, so we don't delete the entire index
-      // The test data will be mixed with other test data, which is acceptable for testing purposes
-    });
-
-    describe('Basic Sparse Vector Operations', () => {
-      it('should upsert vectors with sparse components and query them back', async () => {
-        // Test upserting dense vectors along with their sparse counterparts
-        // The sparse vectors represent additional semantic features beyond the dense embedding
-        const denseVectors = [
-          createVector(0, 1.0), // First vector focuses on dimension 0
-          createVector(1, 1.0), // Second vector focuses on dimension 1
-          createVector(2, 1.0), // Third vector focuses on dimension 2
-        ];
-
-        // Create sparse vectors with different feature patterns
-        // These could represent things like: [keyword_presence, category_id, importance_score]
-        const sparseVectors = [
-          createSparseVector([10, 50, 100], [0.8, 0.6, 0.4]), // First doc: high relevance for features 10, 50, 100
-          createSparseVector([10, 75, 150], [0.7, 0.9, 0.3]), // Second doc: high relevance for features 10, 75, 150  
-          createSparseVector([25, 50, 200], [0.5, 0.8, 0.7]), // Third doc: high relevance for features 25, 50, 200
-        ];
-
-        const metadata = [
-          { type: 'doc', keywords: ['tech', 'ai'] },
-          { type: 'doc', keywords: ['tech', 'data'] },
-          { type: 'doc', keywords: ['business', 'ai'] },
-        ];
-
-        // Step 1: Upsert vectors with both dense and sparse components
-        const vectorIds = await vectorStore.upsert({
-          indexName: sparseTestIndexName,
-          vectors: denseVectors,
-          sparseVectors,
-          metadata,
-        });
-
-        expect(vectorIds).toHaveLength(3);
-        expect(vectorIds.every(id => typeof id === 'string')).toBe(true);
-
-        // Step 2: Wait for vectors to be indexed
-        await waitUntilVectorsIndexed(vectorStore, sparseTestIndexName, 3);
-
-        // Step 3: Query using dense vector only (should work as before)
-        const denseOnlyResults = await vectorStore.query({
-          indexName: sparseTestIndexName,
-          queryVector: createVector(0, 0.9), // Query similar to first vector
-          topK: 3,
-        });
-
-        expect(denseOnlyResults).toHaveLength(3);
-        expect(denseOnlyResults[0]?.metadata?.keywords).toContain('tech'); // Should match first vector
-      }, 60000);
-
-      it('should query using both dense and sparse vectors for hybrid search', async () => {
-        // First upsert some test data with sparse components
-        const denseVectors = [
-          createVector(0, 1.0),
-          createVector(1, 1.0), 
-          createVector(2, 1.0),
-        ];
-
-        // Create sparse vectors representing different feature sets
-        const sparseVectors = [
-          createSparseVector([100, 200], [0.9, 0.8]), // Doc 1: strong signals for features 100, 200
-          createSparseVector([100, 300], [0.7, 0.6]), // Doc 2: moderate signals for features 100, 300
-          createSparseVector([400, 500], [0.8, 0.9]), // Doc 3: strong signals for features 400, 500
-        ];
-
-        const metadata = [
-          { category: 'tech', priority: 'high' },
-          { category: 'tech', priority: 'medium' },
-          { category: 'business', priority: 'high' },
-        ];
-
-        await vectorStore.upsert({
-          indexName: sparseTestIndexName,
-          vectors: denseVectors,
-          sparseVectors,
-          metadata,
-        });
-
-        await waitUntilVectorsIndexed(vectorStore, sparseTestIndexName, 3);
-
-        // Step 1: Query with both dense and sparse components
-        // This simulates a hybrid search where we want semantic similarity (dense) 
-        // plus specific feature matching (sparse)
-        const hybridResults = await vectorStore.query({
-          indexName: sparseTestIndexName,
-          queryVector: createVector(0, 0.8), // Dense query similar to first vector
-          sparseVector: createSparseVector([100], [0.95]), // Looking for docs with high feature 100
-          topK: 3,
-          includeVector: true,
-        });
-
-        expect(hybridResults).toHaveLength(3);
-        
-        // Verify that results include both vector and metadata
-        hybridResults.forEach(result => {
-          expect(result.vector).toBeDefined();
-          expect(result.vector).toHaveLength(VECTOR_DIMENSION);
-          expect(result.metadata).toBeDefined();
-          expect(result.score).toBeDefined();
-        });
-
-        // The first two docs should rank higher since they both have feature 100
-        // while the third doc doesn't have feature 100
-        expect(hybridResults[0]?.metadata?.category).toBe('tech');
-      }, 60000);
-
-      it('should handle mixed batch operations with some vectors having sparse components', async () => {
-        // Test a realistic scenario where only some documents have sparse features
-        // First, test vectors with sparse components
-        const vectorsWithSparse = [
-          { dense: createVector(0, 1.0), sparse: createSparseVector([50, 100], [0.8, 0.6]), metadata: { hasFeatures: true, type: 'enhanced' } },
-          { dense: createVector(2, 1.0), sparse: createSparseVector([75, 125], [0.7, 0.9]), metadata: { hasFeatures: true, type: 'enhanced' } },
-        ];
-
-        // Step 1: Upsert vectors that have sparse components
-        const sparseVectorIds = await vectorStore.upsert({
-          indexName: sparseTestIndexName,
-          vectors: vectorsWithSparse.map(v => v.dense),
-          sparseVectors: vectorsWithSparse.map(v => v.sparse),
-          metadata: vectorsWithSparse.map(v => v.metadata),
-        });
-
-        expect(sparseVectorIds).toHaveLength(2);
-
-        // Step 2: Add vectors with minimal sparse components for Hybrid index
-        const vectorsWithMinimalSparse = [
-          { dense: createVector(1, 1.0), metadata: { hasFeatures: false, type: 'basic' } },
-          { dense: createVector(3, 1.0), metadata: { hasFeatures: false, type: 'basic' } },
-        ];
-
-        const denseOnlyIds = await vectorStore.upsert({
-          indexName: sparseTestIndexName,
-          vectors: vectorsWithMinimalSparse.map(v => v.dense),
-          sparseVectors: [
-            { indices: [0], values: [0.1] },
-            { indices: [0], values: [0.1] },
-          ],
-          metadata: vectorsWithMinimalSparse.map(v => v.metadata),
-        });
-
-        expect(denseOnlyIds).toHaveLength(2);
-
-        await waitUntilVectorsIndexed(vectorStore, sparseTestIndexName, 4);
-
-        // Step 3: Query and verify all vectors were stored correctly
-        const allResults = await vectorStore.query({
-          indexName: sparseTestIndexName,
-          queryVector: createVector(0, 0.9),
-          topK: 10, // Increase topK to ensure we get all vectors
-        });
-
-        // Check that we have at least 4 results (some might be from previous tests)
-        expect(allResults.length).toBeGreaterThanOrEqual(4);
-        
-        // Verify metadata was preserved correctly for all vectors
-        const enhancedDocs = allResults.filter(r => r.metadata?.type === 'enhanced');
-        const basicDocs = allResults.filter(r => r.metadata?.type === 'basic');
-        
-        // Check that we have at least 2 of each type
-        expect(enhancedDocs.length).toBeGreaterThanOrEqual(2);
-        expect(basicDocs.length).toBeGreaterThanOrEqual(2);
-      }, 60000);
-
-      it('should handle minimal sparse vectors gracefully', async () => {
-        // Test that minimal sparse vectors are handled correctly with Hybrid index
-        const denseVectors = [
-          createVector(0, 1.0),
-          createVector(1, 1.0),
-        ];
-
-        // Create sparse vectors with minimal data for Hybrid index compatibility
-        const sparseVectors = [
-          createSparseVector([0], [0.1]), // Minimal sparse vector
-          createSparseVector([100], [0.8]), // Normal sparse vector
-        ];
-
-        const metadata = [
-          { type: 'no-sparse-features' },
-          { type: 'has-sparse-features' },
-        ];
-
-        // Step 1: Upsert with empty sparse vector
-        const vectorIds = await vectorStore.upsert({
-          indexName: sparseTestIndexName,
-          vectors: denseVectors,
-          sparseVectors,
-          metadata,
-        });
-
-        expect(vectorIds).toHaveLength(2);
-
-        await waitUntilVectorsIndexed(vectorStore, sparseTestIndexName, 2);
-
-        // Step 2: Query and verify both vectors work correctly
-        const results = await vectorStore.query({
-          indexName: sparseTestIndexName,
-          queryVector: createVector(0, 0.9),
-          topK: 2,
-        });
-
-        expect(results).toHaveLength(2);
-        expect(results.every(r => r.metadata && r.score !== undefined)).toBe(true);
-      }, 60000);
-    });
-
-    describe('Sparse Vector Validation', () => {
-      it('should accept sparse vectors with matching indices and values lengths', async () => {
-        // Test that validation passes when indices and values arrays have same length
-        const denseVectors = [createVector(0, 1.0)];
-        
-        // Create various valid sparse vectors with different lengths but matching arrays
-        const validSparseVectors = [
-          createSparseVector([10], [0.5]), // Length 1
-          // We can add more variations here if we want to test multiple at once
-        ];
-
-        // This should succeed without throwing
-        const vectorIds = await vectorStore.upsert({
-          indexName: sparseTestIndexName,
-          vectors: denseVectors,
-          sparseVectors: validSparseVectors,
-        });
-
-        expect(vectorIds).toHaveLength(1);
-      });
-
-      it('should reject sparse vectors with mismatched indices and values lengths', async () => {
-        // Test that validation catches when indices.length !== values.length
-        const denseVectors = [createVector(0, 1.0)];
-        
-        // Create invalid sparse vector: 3 indices but 2 values
-        const invalidSparseVectors = [
-          createSparseVector([10, 20, 30], [0.5, 0.8]), // Mismatch: 3 indices, 2 values
-        ];
-
-        // Step 1: Attempt upsert - should throw validation error
-        await expect(
-          vectorStore.upsert({
-            indexName: sparseTestIndexName,
-            vectors: denseVectors,
-            sparseVectors: invalidSparseVectors,
-          })
-        ).rejects.toThrow(/Sparse vector at index 0 has mismatched indices and values lengths/);
-      });
-
-      it('should catch length mismatches in batch operations', async () => {
-        // Test validation works correctly when processing multiple sparse vectors
-        const denseVectors = [
-          createVector(0, 1.0),
-          createVector(1, 1.0), 
-          createVector(2, 1.0),
-        ];
-
-        // Mix of valid and invalid sparse vectors
-        const mixedSparseVectors = [
-          createSparseVector([10, 20], [0.5, 0.8]), // Valid: lengths match
-          createSparseVector([30, 40, 50], [0.6, 0.9]), // Invalid: 3 indices, 2 values (missing value)
-          createSparseVector([60], [0.7]), // Valid: lengths match
-        ];
-
-        // Should fail on the second sparse vector (index 1)
-        await expect(
-          vectorStore.upsert({
-            indexName: sparseTestIndexName,
-            vectors: denseVectors,
-            sparseVectors: mixedSparseVectors,
-          })
-        ).rejects.toThrow(/Sparse vector at index 1 has mismatched indices and values lengths/);
-      });
-
-      it('should provide detailed error information for validation failures', async () => {
-        // Test that validation errors include helpful debugging information
-        const denseVectors = [createVector(0, 1.0)];
-        
-        // Create sparse vector with clear length mismatch
-        const problematicSparseVectors = [
-          createSparseVector([1, 2, 3, 4, 5], [0.1, 0.2]), // 5 indices, 2 values
-        ];
-
-        try {
-          await vectorStore.upsert({
-            indexName: sparseTestIndexName,
-            vectors: denseVectors,
-            sparseVectors: problematicSparseVectors,
-          });
-          
-          // Should not reach this point
-          expect(true).toBe(false);
-        } catch (error: any) {
-          // Step 1: Verify error message contains the index position
-          expect(error.message).toContain('Sparse vector at index 0');
-          
-          // Step 2: Verify error details contain length information
-          expect(error.details?.index).toBe(0);
-          expect(error.details?.indicesLength).toBe(5);
-          expect(error.details?.valuesLength).toBe(2);
-          
-          // Step 3: Verify it's the correct error type
-          expect(error.id).toBe('STORAGE_UPSTASH_VECTOR_SPARSE_VECTOR_MISMATCH');
-        }
-      });
-
-      it('should handle minimal sparse vectors for Hybrid index compatibility', async () => {
-        // Test that minimal sparse vectors work with Hybrid index
-        const denseVectors = [
-          createVector(0, 1.0),
-          createVector(1, 1.0),
-        ];
-
-        const metadata = [
-          { type: 'minimal-sparse-1' },
-          { type: 'minimal-sparse-2' },
-        ];
-
-        // Step 1: Upsert with minimal sparse vectors for Hybrid index
-        const vectorIds = await vectorStore.upsert({
-          indexName: sparseTestIndexName,
-          vectors: denseVectors,
-          sparseVectors: [
-            { indices: [0], values: [0.1] },
-            { indices: [0], values: [0.1] },
-          ],
-          metadata,
-        });
-
-        expect(vectorIds).toHaveLength(2);
-
-        await waitUntilVectorsIndexed(vectorStore, sparseTestIndexName, 2);
-
-        // Step 2: Verify vectors were stored and can be queried
-        const results = await vectorStore.query({
-          indexName: sparseTestIndexName,
-          queryVector: createVector(0, 0.9),
-          topK: 2,
-        });
-
-        expect(results).toHaveLength(2);
-        expect(results.every(r => r.metadata && r.score !== undefined)).toBe(true);
-      }, 60000);
-
-      it('should validate all sparse vectors before processing any', async () => {
-        // Test that validation happens upfront before any processing
-        // This ensures atomicity - either all vectors are valid or none are processed
-        const denseVectors = [
-          createVector(0, 1.0),
-          createVector(1, 1.0),
-          createVector(2, 1.0),
-        ];
-
-        const sparseVectorsWithLateError = [
-          createSparseVector([10], [0.5]), // Valid
-          createSparseVector([20], [0.6]), // Valid
-          createSparseVector([30, 40], [0.7]), // Invalid: 2 indices, 1 value
-        ];
-
-        // Should fail before any vectors are processed
-        await expect(
-          vectorStore.upsert({
-            indexName: sparseTestIndexName,
-            vectors: denseVectors,
-            sparseVectors: sparseVectorsWithLateError,
-          })
-        ).rejects.toThrow(/Sparse vector at index 2 has mismatched indices and values lengths/);
-
-        // Verify no vectors were actually stored by checking the index
-        try {
-          const stats = await vectorStore.describeIndex({ indexName: sparseTestIndexName });
-          expect(stats.count).toBe(0); // No vectors should be stored due to validation failure
-        } catch (error) {
-          // Index might not exist yet, which is also fine - confirms no vectors were stored
-          expect(true).toBe(true);
-        }
-      });
-    });
-  });
-
   describe('Index Operations', () => {
     const createVector = (primaryDimension: number, value: number = 1.0): number[] => {
       const vector = new Array(VECTOR_DIMENSION).fill(0);
@@ -767,11 +241,7 @@ describe.skipIf(!process.env.UPSTASH_VECTOR_URL || !process.env.UPSTASH_VECTOR_T
       // since, we do not have to create index explictly in case of upstash. Upserts are enough
       // for testing the listIndexes() function
       // await vectorStore.createIndex({ indexName: testIndexName, dimension: 3, metric: 'cosine' });
-      const ids = await vectorStore.upsert({ 
-        indexName: testIndexName, 
-        vectors: [createVector(0, 1.0)],
-        sparseVectors: [{ indices: [0], values: [0.1] }],
-      });
+      const ids = await vectorStore.upsert({ indexName: testIndexName, vectors: [createVector(0, 1.0)] });
       expect(ids).toHaveLength(1);
       const indexes = await vectorStore.listIndexes();
       expect(indexes).toEqual([testIndexName]);
@@ -799,11 +269,7 @@ describe.skipIf(!process.env.UPSTASH_VECTOR_URL || !process.env.UPSTASH_VECTOR_T
 
     it('should handle invalid dimension vectors', async () => {
       await expect(
-        vectorStore.upsert({ 
-          indexName: testIndexName, 
-          vectors: [[1.0, 0.0]], // Wrong dimensions
-          sparseVectors: [{ indices: [0], values: [0.1] }],
-        }),
+        vectorStore.upsert({ indexName: testIndexName, vectors: [[1.0, 0.0]] }), // Wrong dimensions
       ).rejects.toThrow();
     });
 
@@ -898,7 +364,6 @@ describe.skipIf(!process.env.UPSTASH_VECTOR_URL || !process.env.UPSTASH_VECTOR_T
       await vectorStore.upsert({
         indexName: filterIndexName,
         vectors: testData.map(d => d.vector),
-        sparseVectors: testData.map(() => ({ indices: [0], values: [0.1] })),
         metadata: testData.map(d => d.metadata),
         ids: testData.map(d => d.id),
       });

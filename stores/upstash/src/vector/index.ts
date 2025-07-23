@@ -7,7 +7,6 @@ import type {
   DescribeIndexParams,
   IndexStats,
   QueryResult,
-  UpdateVectorParams,
 } from '@mastra/core/vector';
 import { Index } from '@upstash/vector';
 import { UpstashFilterTranslator } from './filter';
