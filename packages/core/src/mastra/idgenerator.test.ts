@@ -153,7 +153,7 @@ function createMastraWithMemory(idGenerator?: () => string) {
 
   // Create a mock memory instance
   const memory = new MockMemory();
-  
+
   // Register the memory with Mastra
   memory.__registerMastra(mastra);
 

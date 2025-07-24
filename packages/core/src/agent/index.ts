@@ -1725,7 +1725,7 @@ Message ${msg.threadId && msg.threadId !== threadObject.id ? 'from previous conv
     const input = userInputMessages
       .map(message => (typeof message.content === 'string' ? message.content : ''))
       .join('\n');
-    const runIdToUse = runId || this.#mastra?.generatedId() || randomUUID(); 
+    const runIdToUse = runId || this.#mastra?.generateId() || randomUUID();
 
     if (Object.keys(this.evals || {}).length > 0) {
       for (const metric of Object.values(this.evals || {})) {
@@ -2103,9 +2103,8 @@ Message ${msg.threadId && msg.threadId !== threadObject.id ? 'from previous conv
     | StreamTextResult<any, OUTPUT extends ZodSchema ? z.infer<OUTPUT> : unknown>
     | StreamObjectResult<any, OUTPUT extends ZodSchema ? z.infer<OUTPUT> : unknown, any>
   > {
-    
     const defaultStreamOptions = await this.getDefaultStreamOptions({ runtimeContext: streamOptions.runtimeContext });
-   
+
     const mergedStreamOptions: AgentStreamOptions<OUTPUT, EXPERIMENTAL_OUTPUT> = {
       ...defaultStreamOptions,
       ...streamOptions,
