@@ -1683,25 +1683,6 @@ Message ${msg.threadId && msg.threadId !== threadObject.id ? 'from previous conv
           }
         }
 
-
-        if (Object.keys(this.evals || {}).length > 0) {
-          const userInputMessages = messageList.get.all.ui().filter(m => m.role === 'user');
-          const input = userInputMessages
-            .map(message => (typeof message.content === 'string' ? message.content : ''))
-            .join('\n');
-            const runIdToUse = runId || this.#mastra?.generateId() || randomUUID();
-          for (const metric of Object.values(this.evals || {})) {
-            executeHook(AvailableHooks.ON_GENERATION, {
-              input,
-              output: outputText,
-              runId: runIdToUse,
-              metric,
-              agentName: this.name,
-              instructions: instructions || this.instructions,
-            });
-          }
-        }
-
         const outputForScoring = {
           text: result?.text,
           object: result?.object,
@@ -1744,7 +1725,7 @@ Message ${msg.threadId && msg.threadId !== threadObject.id ? 'from previous conv
     const input = userInputMessages
       .map(message => (typeof message.content === 'string' ? message.content : ''))
       .join('\n');
-    const runIdToUse = runId || crypto.randomUUID();
+    const runIdToUse = runId || this.#mastra?.generatedId() || randomUUID(); 
 
     if (Object.keys(this.evals || {}).length > 0) {
       for (const metric of Object.values(this.evals || {})) {
