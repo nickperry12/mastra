@@ -192,18 +192,7 @@ export class Memory extends MastraMemory {
         if (selectBy?.last && v1Messages.length > selectBy.last) {
           // ex: 23 (v1 messages) minus 20 (selectBy.last messages)
           // means we will start from index 3 and keep all the later newer messages from index 3 til the end of the array
-          const slicedMessages = v1Messages.slice(v1Messages.length - selectBy.last) as CoreMessage[];
-          // AWS Bedrock requires conversations to start with a user message
-          // If the first message after slicing is not a user message, find the first user message
-          // and start from there to ensure provider compatibility
-          if (slicedMessages[0] && slicedMessages.length > 0 && slicedMessages[0].role !== 'user') {
-            const firstUserIndex = slicedMessages.findIndex(msg => msg.role === 'user');
-            if (firstUserIndex > 0) {
-              return slicedMessages.slice(firstUserIndex);
-            }
-          }
-
-          return slicedMessages;
+          return v1Messages.slice(v1Messages.length - selectBy.last) as CoreMessage[];
         }
         // TODO: this is absolutely wrong but became apparent that this is what we were doing before adding MessageList. Our public types said CoreMessage but we were returning MessageType which is equivalent to MastraMessageV1
         // In a breaking change we should make this the type it actually is.

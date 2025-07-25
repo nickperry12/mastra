@@ -114,11 +114,24 @@ export class MessageList {
       const coreMessages = this.all.core();
 
       // Some LLM providers will throw an error if the first message is a tool call.
-      while (coreMessages[0] && isToolCallMessage(coreMessages[0])) {
-        coreMessages.shift();
-      }
+      // while (coreMessages[0] && isToolCallMessage(coreMessages[0])) {
+      //   coreMessages.shift();
+      // }
 
       const messages = [...this.systemMessages, ...Object.values(this.taggedSystemMessages).flat(), ...coreMessages];
+      
+      const needsDefaultUserMessage = messages.length === 0 || 
+        (messages[0] && (messages[0].role !== 'user' && messages[0].role !== 'system'));
+      
+      if (needsDefaultUserMessage) {
+        const defaultMessage: CoreMessage = {
+          role: 'user',
+          content: 'hello'
+        };
+        
+        messages.unshift(defaultMessage);
+      }
+      
       return messages;
     },
   };
