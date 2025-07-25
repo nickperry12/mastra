@@ -120,8 +120,7 @@ export class MessageList {
 
       const messages = [...this.systemMessages, ...Object.values(this.taggedSystemMessages).flat(), ...coreMessages];
 
-      const needsDefaultUserMessage =
-        messages.length === 0 || (messages[0] && messages[0].role !== 'user' && messages[0].role !== 'system');
+      const needsDefaultUserMessage = !messages.length || messages[0]?.role === 'assistant';
 
       if (needsDefaultUserMessage) {
         const defaultMessage: CoreMessage = {
