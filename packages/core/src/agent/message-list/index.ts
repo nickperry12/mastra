@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { convertToCoreMessages } from 'ai';
-import type { CoreMessage, CoreSystemMessage, IDGenerator, Message, ToolCallPart, ToolInvocation, UIMessage } from 'ai';
+import type { CoreMessage, CoreSystemMessage, IDGenerator, Message, ToolInvocation, UIMessage } from 'ai'; // removed ToolCallPart for linter
 import { MastraError, ErrorDomain, ErrorCategory } from '../../error';
 import type { MastraMessageV1 } from '../../memory';
 import { isCoreMessage, isUiMessage } from '../../utils';
@@ -29,15 +29,15 @@ export type MastraMessageV2 = {
   type?: string;
 };
 
-function isToolCallMessage(message: CoreMessage): boolean {
-  if (message.role === 'tool') {
-    return true;
-  }
-  if (message.role === 'assistant' && Array.isArray(message.content)) {
-    return message.content.some((part): part is ToolCallPart => part.type === 'tool-call');
-  }
-  return false;
-}
+// function isToolCallMessage(message: CoreMessage): boolean {
+//   if (message.role === 'tool') {
+//     return true;
+//   }
+//   if (message.role === 'assistant' && Array.isArray(message.content)) {
+//     return message.content.some((part): part is ToolCallPart => part.type === 'tool-call');
+//   }
+//   return false;
+// }
 
 export type MessageInput = UIMessage | Message | MastraMessageV1 | CoreMessage | MastraMessageV2;
 type MessageSource = 'memory' | 'response' | 'user' | 'system' | 'context';
@@ -119,19 +119,19 @@ export class MessageList {
       // }
 
       const messages = [...this.systemMessages, ...Object.values(this.taggedSystemMessages).flat(), ...coreMessages];
-      
-      const needsDefaultUserMessage = messages.length === 0 || 
-        (messages[0] && (messages[0].role !== 'user' && messages[0].role !== 'system'));
-      
+
+      const needsDefaultUserMessage =
+        messages.length === 0 || (messages[0] && messages[0].role !== 'user' && messages[0].role !== 'system');
+
       if (needsDefaultUserMessage) {
         const defaultMessage: CoreMessage = {
           role: 'user',
-          content: 'hello'
+          content: 'hello',
         };
-        
+
         messages.unshift(defaultMessage);
       }
-      
+
       return messages;
     },
   };
