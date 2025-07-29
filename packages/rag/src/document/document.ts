@@ -8,6 +8,7 @@ import { RecursiveJsonTransformer } from './transformers/json';
 import { LatexTransformer } from './transformers/latex';
 import { MarkdownHeaderTransformer, MarkdownTransformer } from './transformers/markdown';
 import { TokenTransformer } from './transformers/token';
+import { SentenceTransformer } from './transformers/sentence';
 import type { ChunkOptions, ChunkParams, ChunkStrategy, ExtractParams } from './types';
 
 export class MDocument {
@@ -155,6 +156,9 @@ export class MDocument {
       case 'json':
         await this.chunkJSON(options);
         break;
+      case 'sentence':
+        await this.chunkSentence(options);
+        break;
       case 'latex':
         await this.chunkLatex(options);
         break;
@@ -254,6 +258,12 @@ export class MDocument {
     }
 
     const rt = new MarkdownTransformer(options);
+    const textSplit = rt.transformDocuments(this.chunks);
+    this.chunks = textSplit;
+  }
+
+  async chunkSentence(options?: ChunkOptions): Promise<void> {
+    const rt = new SentenceTransformer(options);
     const textSplit = rt.transformDocuments(this.chunks);
     this.chunks = textSplit;
   }

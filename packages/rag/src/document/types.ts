@@ -67,7 +67,7 @@ export type ChunkOptions = {
   stripHeaders?: boolean;
 };
 
-export type ChunkStrategy = 'recursive' | 'character' | 'token' | 'markdown' | 'html' | 'json' | 'latex';
+export type ChunkStrategy = 'recursive' | 'character' | 'token' | 'markdown' | 'html' | 'json' | 'latex' | 'sentence';
 
 export interface ChunkParams extends ChunkOptions {
   strategy?: ChunkStrategy;

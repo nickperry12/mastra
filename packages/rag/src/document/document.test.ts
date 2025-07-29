@@ -1,9 +1,12 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { embedMany } from 'ai';
 import { describe, it, expect, vi } from 'vitest';
+import { config } from 'dotenv';
 
 import { MDocument } from './document';
 import { Language } from './types';
+
+config();
 
 const sampleMarkdown = `
 # Complete Guide to Modern Web Development
@@ -2067,6 +2070,106 @@ function findCommonSubstring(str1: string, str2: string): string {
   for (let i = 0; i < str1.length; i++) {
     for (let j = i + 1; j <= str1.length; j++) {
       const substring = str1.substring(i, j);
+      if (substring.length > longest.length && str2.includes(substring)) {
+        longest = substring;
+      }
+    }
+  }
+
+  return longest;
+}
+
+describe('chunkSentence', () => {
+  it('should chunk text by sentences with size constraints', async () => {
+    const text = "A dynamic concert scene captures an energetic, vibrant atmosphere, with a densely packed crowd silhouetted against bright stage lights. The image features beams of white light radiating from multiple projectors, creating dramatic patterns across a darkened room. The audience, comprised of numerous people with raised hands, exudes excitement and engagement, enhancing the lively mood. The setting suggests a large indoor venue, possibly a music or worship event, with text visible on a screen in the background, adding to an immersive experience. The overall composition emphasizes a sense of community and shared enthusiasm, ideal for promoting entertainment events, live concerts, or communal gatherings. The high-contrast lighting and slight haze effect imbue the scene with a modern, electrifying quality.";
+
+    const doc = MDocument.fromText(text, { meta: 'data' });
+
+    await doc.chunk({
+      strategy: 'sentence',
+      size: 450,
+      minSize: 50,
+    });
+
+    const chunks = doc.getDocs();
+
+    expect(chunks).toHaveLength(2);
+    expect(chunks?.[0]?.text).toBe("A dynamic concert scene captures an energetic, vibrant atmosphere, with a densely packed crowd silhouetted against bright stage lights. The image features beams of white light radiating from multiple projectors, creating dramatic patterns across a darkened room. The audience, comprised of numerous people with raised hands, exudes excitement and engagement, enhancing the lively mood.");
+    expect(chunks?.[1]?.text).toBe("The setting suggests a large indoor venue, possibly a music or worship event, with text visible on a screen in the background, adding to an immersive experience. The overall composition emphasizes a sense of community and shared enthusiasm, ideal for promoting entertainment events, live concerts, or communal gatherings. The high-contrast lighting and slight haze effect imbue the scene with a modern, electrifying quality.");
+  });
+
+  it('should preserve sentence structure within chunks', async () => {
+    const text = "First sentence. Second sentence! Third sentence? Fourth sentence.";
+
+    const doc = MDocument.fromText(text, { meta: 'data' });
+
+    await doc.chunk({
+      strategy: 'sentence',
+      size: 100,
+      overlap: 10,
+    });
+
+    const chunks = doc.getDocs();
+
+    // Each chunk should contain complete sentences
+    chunks.forEach(chunk => {
+      const text = chunk.text;
+      // Should start with capital letter (start of sentence)
+      expect(text.charAt(0)).toMatch(/[A-Z]/);
+      // Should end with sentence punctuation
+      expect(text).toMatch(/[.!?]$/);
+    });
+  });
+
+  it('should handle abbreviations correctly', async () => {
+    const text = "Dr. Smith went to the U.S. yesterday. He met with Prof. Johnson at 3 p.m. They discussed the project.";
+
+    const doc = MDocument.fromText(text, { meta: 'data' });
+
+    await doc.chunk({
+      strategy: 'sentence',
+      size: 200,
+    });
+
+    const chunks = doc.getDocs();
+
+    // Should not split on abbreviations like "Dr.", "U.S.", "Prof.", "p.m."
+    // With size 200 and text length 101, all sentences fit in one chunk
+    expect(chunks).toHaveLength(1);
+    expect(chunks?.[0]?.text).toBe("Dr. Smith went to the U.S. yesterday. He met with Prof. Johnson at 3 p.m. They discussed the project.");
+    
+    // Verify the text contains all the abbreviations (they weren't incorrectly split)
+    expect(chunks?.[0]?.text).toContain("Dr. Smith");
+    expect(chunks?.[0]?.text).toContain("U.S.");
+    expect(chunks?.[0]?.text).toContain("Prof. Johnson");
+    expect(chunks?.[0]?.text).toContain("p.m.");
+  });
+
+  it('should handle quoted sentences', async () => {
+    const text = 'He said, "This is a quote!" Then he continued speaking. She replied, "I understand." The conversation ended.';
+
+    const doc = MDocument.fromText(text, { meta: 'data' });
+
+    await doc.chunk({
+      strategy: 'sentence',
+      size: 150,
+    });
+
+    const chunks = doc.getDocs();
+
+    // Quoted exclamation should not split the sentence
+    expect(chunks?.[0]?.text).toContain('"This is a quote!"');
+    expect(chunks?.[0]?.text).toContain('Then he continued speaking.');
+  });
+});
+
+// Helper function for finding longest common substring
+function longestCommonSubstring(str1: string, str2: string): string {
+  let longest = '';
+
+  for (let i = 0; i < str1.length; i++) {
+    for (let j = i + 1; j <= str1.length; j++) {
+      const substring = str1.slice(i, j);
       if (substring.length > longest.length && str2.includes(substring)) {
         longest = substring;
       }
